@@ -32,19 +32,28 @@ class curve():
             self.input_spots = [float(s) for t in list(spot_series)]
 
         else:
-            raise ValueError("Please provide a spot dictonary (spot_dict), "\
-                             "a spot series (spot_series), "\
-                             "or term and spot vectors (term_vector and spot_vector)")
+            raise ValueError('Please provide a spot dictonary (spot_dict), '
+                             'a spot series (spot_series), '
+                             'or term and spot vectors (term_vector and spot_vector)')
 
         self.spot_length = len(self.spot_series)
         self.terms = self.input_terms
         self.spots = self.input_spots
         self.discount_factors = None
 
-    def fill_curve():
+    # Helper Functions
+    def _frange(self, start, stop, step):
         """
-        Expand a given spot curve to include individual maturities
+        Create a range with float values and float step size
         """
+
+        # Handle basis points (hundredths of a percent)
+        oom = 10000
+        start = int(start * oom)
+        stop = int(stop * oom)
+        step = int(step * oom)
+
+        return [i/oom for i in range(start, stop, step)]
 
     def _calc_diccount_factors(self, spot_series):
         """
@@ -58,6 +67,39 @@ class curve():
         discounts.at[0] = np.nan
 
         return discounts
+
+    def fill_curve(self, spot_min_term=None, spot_min_val=None,
+                   spot_max_term=None, spot_max_val=None):
+        """
+        Expand a given spot curve to include individual maturities
+
+        Uses linear interpolation
+        """
+
+        # Save original spot curve
+        self.orig_spot_series = self.spot_series
+
+        # Set Expanded Start and End
+        if str(spot_min_term) == 'None':
+            spot_min_term = min(self.spot_series.index)
+        if str(spot_min_val) == 'None':
+            spot_min_val = min(self.spot_series)
+        if str(spot_max_term) == 'None':
+            spot_max_term = max(self.spot_series.index)
+        if str(spot_max_val) == 'None':
+            spot_max_val = max(self.spot_series)
+
+        # Expand Spot Series
+        if spot_min_term < min(self.spot_series.index):
+            self.spot_series.at[spot_min_term] = spot_min_val
+        if spot_max_term < max(self.spot_series.index):
+            self.spot_series.at[spot_max_term] = spot_max_val
+        self.spot_series = self.spot_series.reindex(self._frange(spot_min_term, spot_max_term+1, 1)).interpolate(method='index')
+
+        # Update Object after Expanding Spot Series
+        self.terms = list(self.spot_series.index)
+        self.spots = list(self.spot_series)
+        self.spot_length = len(self.spot_series)
 
     def add_discount_factors(self):
         """
