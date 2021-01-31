@@ -38,7 +38,7 @@ class curve():
         self.spot_length = len(self.spot_series)
         self.terms = self.input_terms
         self.spots = self.input_spots
-        self.discount_factors = None
+        self.discount_factors = 'EMPTY'
 
     # Helper Functions
     def _frange(self, start, stop, step):
@@ -127,6 +127,12 @@ class curve():
         Calculate implied forward rates for a given term, given a spot curve
         """
 
+        # Check that discount factors have been calculated; error if not
+        if self.discount_factors == 'EMPTY':
+            raise TypeError('Internal discount_factors is default string EMPTY; '
+                            'cannot calculate a horizon grid without first '
+                            'adding discount factors')
+                            
         # Add spot curve to forwards as horizon 0
         fowrard_series = pd.Series()
         forward_series.at[0] = self.spot_series.at[float(forward_term)]
@@ -154,6 +160,12 @@ class curve():
         """
         Calculate an implied spot curve for a future horizon
         """
+
+        # Check that discount factors have been calculated; error if not
+        if self.discount_factors == 'EMPTY':
+            raise TypeError('Internal discount_factors is default string EMPTY; '
+                            'cannot calculate a horizon grid without first '
+                            'adding discount factors')
 
         # Set up data holders
         horizon_term = []
@@ -185,6 +197,12 @@ class curve():
         """
         Calculate a full implied horizon grid
         """
+
+        # Check that discount factors have been calculated; error if not
+        if self.discount_factors == 'EMPTY':
+            raise TypeError('Internal discount_factors is default string EMPTY; '
+                            'cannot calculate a horizon grid without first '
+                            'adding discount factors')
 
         # Get max term if not supplied
         if str(max_term) == 'None':
