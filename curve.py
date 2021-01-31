@@ -132,7 +132,7 @@ class curve():
             raise TypeError('Internal discount_factors is default string EMPTY; '
                             'cannot calculate a horizon grid without first '
                             'adding discount factors')
-                            
+
         # Add spot curve to forwards as horizon 0
         fowrard_series = pd.Series()
         forward_series.at[0] = self.spot_series.at[float(forward_term)]
@@ -206,12 +206,12 @@ class curve():
 
         # Get max term if not supplied
         if str(max_term) == 'None':
-            max_term = max(self.spot_series.index)
+            max_term = max(self.terms)
 
         # Build Grid
         horizon_grid_dict = {}
         temp_df = pd.Dataframe()
-        for term in list(self.spot_series.index):
+        for term in self.terms:
 
             if t > max_term:
                 continue
