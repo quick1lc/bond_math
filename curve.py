@@ -1,5 +1,4 @@
 # TODO: add ability to pick discounting method (annual, semi_annual, etc.)
-# TODO: Make forward rate calc an independent method (remove dup)
 # TODO: code comments
 # TODO: add ability to get horizon_grid_dict
 # TODO: add the ability to set the order of magnitude for the rates
@@ -59,7 +58,7 @@ class curve():
         """
         Calculate the discount factors for a given spot curve
 
-        Currently assumes semi-annual - i think
+        Currently assumes semi-annual
         """
 
         discounts = pd.Series()
@@ -67,6 +66,13 @@ class curve():
         discounts.at[0] = np.nan
 
         return discounts
+
+    def _individual_forward_rate(self, future_disc, prev_disc, forward_term):
+        """
+        Calculate an individual implied forward rate
+        """
+
+        return 200*((future_disc/prev_disc)**(1/(2*(-forward_term)/12))-1)
 
     def fill_curve(self, spot_min_term=None, spot_min_val=None,
                    spot_max_term=None, spot_max_val=None):
@@ -110,7 +116,7 @@ class curve():
         spots are given at instantiation. As such, the use must actively add
         the discount factors after they are sure they have a full curve
 
-        Currently assumes semi-annual - i think
+        Currently assumes semi-annual
         """
 
         # Add discount factors to object
@@ -135,7 +141,9 @@ class curve():
             else:
                 prev_disc = self.factor_series.at[idx]
                 future_disc = self.factor_series.at[idx+forward_term]
-                curr_forward = 200*((future_disc/prev_disc)**(1/(2*(-forward_term)/12))-1)
+                curr_forward = self._individual_forward_rate(future_disc=future_disc,
+                                                             prev_disc=prev_disc,
+                                                             forward_term=forward_term)
 
             # Add forward to output
             forward_series.at[idx] = curr_forward
@@ -162,8 +170,9 @@ class curve():
             future_idx = self.term.index(future_term) + 1 # Add one because discounts has a None at start
             start_disc = self.discount_factors[start_idx]
             future_disc = self.discount_factors[future_idx]
-            curr_spot = 200*((future_disc/prev_disc)**(1/(2*(-forward_term)/12))-1)
-
+            curr_spot = self._individual_forward_rate(future_disc=future_disc,
+                                                      prev_disc=prev_disc,
+                                                      forward_term=forward_term)
             horizon_term.append(term)
             horizon_spot.append(curr_spot)
 
