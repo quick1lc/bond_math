@@ -24,12 +24,12 @@ class curve():
 
         elif (term_vector != 'EMPTY') and (spot_vector != 'EMPTY'):
             self.input_terms = [float(t) for t in term_vector]
-            self.input_spots = [float(s) for t in spot_vector]
+            self.input_spots = [float(s) for s in spot_vector]
             self.spot_series = pd.Series(self.input_spots, index=self.input_terms)
 
         elif spot_series != 'EMPTY':
             self.input_terms = [float(t) for t in list(spot_series.index)]
-            self.input_spots = [float(s) for t in list(spot_series)]
+            self.input_spots = [float(s) for s in list(spot_series)]
 
         else:
             raise ValueError('Please provide a spot dictonary (spot_dict), '
