@@ -1,6 +1,8 @@
 # TODO: add ability to pick discounting method (annual, semi_annual, etc.)
 # TODO: Make forward rate calc an independent method (remove dup)
+# TODO: code comments
 # TODO: add ability to get horizon_grid_dict
+# TODO: add the ability to set the order of magnitude for the rates
 
 import numpy as np
 import pandas as pd
@@ -61,9 +63,15 @@ class curve():
         """
         Add discount factors to the curve object
 
+        This is a seperate method (not immediatly called by the init) because
+        the class includes a simple method for filling the curve if only specific
+        spots are given at instantiation. As such, the use must actively add
+        the discount factors after they are sure they have a full curve
+
         Currently assumes semi-annual - i think
         """
 
+        # Add discount factors to object
         self.discount_factors = self._calc_discount_factors(spot_series=self.spot_series)
 
     def calc_forward_rates(self, forward_term, numb_of_horizons):
