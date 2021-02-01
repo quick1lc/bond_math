@@ -1,7 +1,5 @@
-# TODO: add ability to pick discounting method (annual, semi_annual, etc.)
 # TODO: code comments
 # TODO: add ability to get horizon_grid_dict
-# TODO: add the ability to set the order of magnitude for the rates
 
 import numpy as np
 import pandas as pd
@@ -10,9 +8,24 @@ class curve():
     "Curve Class"
 
     def __init__(self, spot_dict='EMPTY', term_vector='EMPTY',
-                 spot_vector='EMPTY', spot_series='EMPTY'):
+                 spot_vector='EMPTY', spot_series='EMPTY',
+                 order_of_mag=100):
         """
-        The init
+        The init for the curve class. Can be instantiated with a spot curve
+        dictonary, pandas Series, or as rate and term vectors
+
+        :param spot_dict:
+        :type spot_dict:
+        :param term_vector:
+        :type term_vector:
+        :param spot_vector:
+        :type spot_vector:
+        :param spot_series:
+        :type spot_series:
+        :param order_of_mag: The divisor needed to convert the given rates into
+        a decimal (where 1% = 0.01). If the rates are given in percentages
+        (where 1% = 1), then the order of magnitude needs to be 100
+        :type order_of_mag: int
         """
 
         # Absorb inputs; create or parse spot rate series
@@ -39,6 +52,8 @@ class curve():
         self.terms = self.input_terms
         self.spots = self.input_spots
         self.discount_factors = 'EMPTY'
+        self.compound_periods = None
+        self.order_of_mag = order_of_mag
 
     # Helper Functions
     def _frange(self, start, stop, step):
@@ -54,25 +69,58 @@ class curve():
 
         return [i/oom for i in range(start, stop, step)]
 
-    def _calc_diccount_factors(self, spot_series):
+    def _calc_diccount_factors(self, spot_series, compound_periods=1,
+                               order_of_mag):
         """
-        Calculate the discount factors for a given spot curve
+        Calculate the discount factors for a given spot curve; this method
+        assumes that all terms are in months
 
-        Currently assumes semi-annual
+        :param spot_series: The spot rates to be converted to discount factors;
+        the series should have rates as the items and terms as the index
+        :type spot_series: pandas Series
+        :param compound_periods: The number of compounding periods per year
+        :type compound_periods: int or float
+        :param order_of_mag: The divisor needed to convert the given rates into
+        a decimal (where 1% = 0.01). If the rates are given in percentages
+        (where 1% = 1), then the order of magnitude needs to be 100
+        :type order_of_mag: int
+
+        :returns: a pandas Series of discount factors
         """
+        # Example Calc
+        # discounts = (1+(spot_series/200))**((-2*spot_series.index)/12)
 
         discounts = pd.Series()
-        discounts = (1+(spot_series/200))**((-2*spot_series.index)/12)
+        discounts = (1+((spot_series/order_of_mag)/compound_periods))**(-compound_periods*(spot_series.index/12))
         discounts.at[0] = np.nan
 
         return discounts
 
-    def _individual_forward_rate(self, future_disc, prev_disc, forward_term):
+    def _individual_forward_rate(self, future_disc, prev_disc, forward_term,
+                                 compound_periods, order_of_mag):
         """
-        Calculate an individual implied forward rate
-        """
+        Calculate an individual implied forward rate using two discount factors;
+        this method assumes that all terms are in months
 
-        return 200*((future_disc/prev_disc)**(1/(2*(-forward_term)/12))-1)
+        :param future_disc:
+        :type future_disc: float
+        :param prev_disc:
+        :type prev_disc: float
+        :param forward_term:
+        :type forward_term: float
+        :param compound_periods: The number of compounding periods per year
+        :type compound_periods: int or float
+        :param order_of_mag: The divisor needed to convert the given rates into
+        a decimal (where 1% = 0.01). If the rates are given in percentages
+        (where 1% = 1), then the order of magnitude needs to be 100
+        :type order_of_mag: int
+
+        :returns: an individual forward rate as a float
+        """
+        # Example Calc
+        # 200*((future_disc/prev_disc)**(1/(2*(-forward_term)/12))-1)
+
+        return (compound_periods*order_of_mag)*((future_disc/prev_disc)**(1/(compound_periods*(-forward_term)/12))-1)
 
     def fill_curve(self, spot_min_term=None, spot_min_val=None,
                    spot_max_term=None, spot_max_val=None):
@@ -107,7 +155,7 @@ class curve():
         self.spots = list(self.spot_series)
         self.spot_length = len(self.spot_series)
 
-    def add_discount_factors(self):
+    def add_discount_factors(self, compound_periods=1):
         """
         Add discount factors to the curve object
 
@@ -120,7 +168,12 @@ class curve():
         """
 
         # Add discount factors to object
-        self.discount_factors = self._calc_discount_factors(spot_series=self.spot_series)
+        self.discount_factors = self._calc_discount_factors(spot_series=self.spot_series,
+                                                            compound_periods=compound_periods,
+                                                            order_of_mag=self.order_of_mag)
+
+        # Capture requested number of compounding periods
+        self.compound_periods = compound_periods
 
     def calc_forward_rates(self, forward_term, numb_of_horizons):
         """
@@ -131,7 +184,7 @@ class curve():
         if self.discount_factors == 'EMPTY':
             raise TypeError('Internal discount_factors is default string EMPTY; '
                             'cannot calculate a horizon grid without first '
-                            'adding discount factors')
+                            'adding discount factors using add_discount_factors')
 
         # Add spot curve to forwards as horizon 0
         fowrard_series = pd.Series()
@@ -149,7 +202,9 @@ class curve():
                 future_disc = self.factor_series.at[idx+forward_term]
                 curr_forward = self._individual_forward_rate(future_disc=future_disc,
                                                              prev_disc=prev_disc,
-                                                             forward_term=forward_term)
+                                                             forward_term=forward_term,
+                                                             compound_periods=self.compound_periods,
+                                                             order_of_mag=self.order_of_mag)
 
             # Add forward to output
             forward_series.at[idx] = curr_forward
@@ -165,7 +220,7 @@ class curve():
         if self.discount_factors == 'EMPTY':
             raise TypeError('Internal discount_factors is default string EMPTY; '
                             'cannot calculate a horizon grid without first '
-                            'adding discount factors')
+                            'adding discount factors using add_discount_factors')
 
         # Set up data holders
         horizon_term = []
@@ -184,7 +239,9 @@ class curve():
             future_disc = self.discount_factors[future_idx]
             curr_spot = self._individual_forward_rate(future_disc=future_disc,
                                                       prev_disc=prev_disc,
-                                                      forward_term=forward_term)
+                                                      forward_term=forward_term,
+                                                      compound_periods=self.compound_periods,
+                                                      order_of_mag=self.order_of_mag)
             horizon_term.append(term)
             horizon_spot.append(curr_spot)
 
@@ -202,7 +259,7 @@ class curve():
         if self.discount_factors == 'EMPTY':
             raise TypeError('Internal discount_factors is default string EMPTY; '
                             'cannot calculate a horizon grid without first '
-                            'adding discount factors')
+                            'adding discount factors using add_discount_factors')
 
         # Get max term if not supplied
         if str(max_term) == 'None':
