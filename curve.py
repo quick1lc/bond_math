@@ -7,8 +7,8 @@ import pandas as pd
 class curve():
     "Curve Class"
 
-    def __init__(self, spot_dict='EMPTY', term_vector='EMPTY',
-                 spot_vector='EMPTY', spot_series='EMPTY',
+    def __init__(self, spot_dict={}, term_vector=[],
+                 spot_vector=[], spot_series=pd.Series,
                  order_of_mag=100):
         """
         The init for the curve class. Can be instantiated with a spot curve
@@ -29,19 +29,20 @@ class curve():
         """
 
         # Absorb inputs; create or parse spot rate series
-        if spot_dict != 'EMPTY':
+        if spot_dict:
             self.input_terms = [float(str(t)) for t in spot_dict]
             self.input_spots = [float(str(spot_dict[t])) for t in spot_dict]
             self.spot_series = pd.Series(self.input_spots, index=self.input_terms)
 
-        elif (term_vector != 'EMPTY') and (spot_vector != 'EMPTY'):
+        elif term_vector and spot_vector:
             self.input_terms = [float(t) for t in term_vector]
             self.input_spots = [float(s) for s in spot_vector]
             self.spot_series = pd.Series(self.input_spots, index=self.input_terms)
 
-        elif spot_series != 'EMPTY':
+        elif not spot_series.empty:
             self.input_terms = [float(t) for t in list(spot_series.index)]
             self.input_spots = [float(s) for s in list(spot_series)]
+            self.spot_series = spot_series
 
         else:
             raise ValueError('Please provide a spot dictonary (spot_dict), '
@@ -51,7 +52,7 @@ class curve():
         self.spot_length = len(self.spot_series)
         self.terms = self.input_terms
         self.spots = self.input_spots
-        self.discount_factors = 'EMPTY'
+        self.discount_factors = pd.Series
         self.compound_periods = None
         self.order_of_mag = order_of_mag
 
@@ -69,7 +70,7 @@ class curve():
 
         return [i/oom for i in range(start, stop, step)]
 
-    def _calc_diccount_factors(self, spot_series, compound_periods=1,
+    def _calc_discount_factors(self, spot_series, compound_periods,
                                order_of_mag):
         """
         Calculate the discount factors for a given spot curve; this method
@@ -96,16 +97,16 @@ class curve():
 
         return discounts
 
-    def _individual_forward_rate(self, future_disc, prev_disc, forward_term,
-                                 compound_periods, order_of_mag):
+    def _individual_forward_rate(self, future_disc, start_disc, forward_term,
+                                  compound_periods, order_of_mag):
         """
         Calculate an individual implied forward rate using two discount factors;
         this method assumes that all terms are in months
 
         :param future_disc:
         :type future_disc: float
-        :param prev_disc:
-        :type prev_disc: float
+        :param start_disc:
+        :type start_disc: float
         :param forward_term:
         :type forward_term: float
         :param compound_periods: The number of compounding periods per year
@@ -120,7 +121,35 @@ class curve():
         # Example Calc
         # 200*((future_disc/prev_disc)**(1/(2*(-forward_term)/12))-1)
 
-        return (compound_periods*order_of_mag)*((future_disc/prev_disc)**(1/(compound_periods*(-forward_term)/12))-1)
+        return (order_of_mag*compound_periods)*((future_disc/start_disc)**(1/(compound_periods*(-forward_term/12)))-1)
+
+        
+    def  _individual_horizon_spot(self, future_disc, start_disc, term,
+                                  compound_periods, order_of_mag):
+        """
+        Calculate an individual implied horizon spot rate using two discount 
+        factors; this method assumes that all terms are in months
+
+        :param future_disc:
+        :type future_disc: float
+        :param start_disc:
+        :type start_disc: float
+        :param term:
+        :type term: float
+        :param compound_periods: The number of compounding periods per year
+        :type compound_periods: int or float
+        :param order_of_mag: The divisor needed to convert the given rates into
+        a decimal (where 1% = 0.01). If the rates are given in percentages
+        (where 1% = 1), then the order of magnitude needs to be 100
+        :type order_of_mag: int
+
+        :returns: an individual forward rate as a float
+        """
+        # Example Calc
+        # 200*((start_disc/future_disc)**(1/(2*(term/12)))-1)
+        
+        return (order_of_mag*compound_periods)*((start_disc/future_disc)**(1/(compound_periods*(term/12)))-1)
+
 
     def fill_curve(self, spot_min_term=None, spot_min_val=None,
                    spot_max_term=None, spot_max_val=None):
@@ -181,13 +210,13 @@ class curve():
         """
 
         # Check that discount factors have been calculated; error if not
-        if self.discount_factors == 'EMPTY':
-            raise TypeError('Internal discount_factors is default string EMPTY; '
+        if self.discount_factors.empty:
+            raise TypeError('Internal discount_factors is empty; '
                             'cannot calculate a horizon grid without first '
                             'adding discount factors using add_discount_factors')
 
         # Add spot curve to forwards as horizon 0
-        fowrard_series = pd.Series()
+        forward_series = pd.Series()
         forward_series.at[0] = self.spot_series.at[float(forward_term)]
 
         # Calculate remaining forward horizons
@@ -198,12 +227,12 @@ class curve():
             if (i+forward_term) > self.spot_length:
                 curr_forward = np.nan
             else:
-                prev_disc = self.factor_series.at[idx]
-                future_disc = self.factor_series.at[idx+forward_term]
+                start_disc = self.discount_factors.at[idx]
+                future_disc = self.discount_factors.at[idx+forward_term]
                 curr_forward = self._individual_forward_rate(future_disc=future_disc,
-                                                             prev_disc=prev_disc,
+                                                             start_disc=start_disc,
                                                              forward_term=forward_term,
-                                                             compound_periods=self.compound_periods,
+                                                             compound_periods=self.compound_periods, 
                                                              order_of_mag=self.order_of_mag)
 
             # Add forward to output
@@ -217,8 +246,8 @@ class curve():
         """
 
         # Check that discount factors have been calculated; error if not
-        if self.discount_factors == 'EMPTY':
-            raise TypeError('Internal discount_factors is default string EMPTY; '
+        if self.discount_factors.empty:
+            raise TypeError('Internal discount_factors is empty; '
                             'cannot calculate a horizon grid without first '
                             'adding discount factors using add_discount_factors')
 
@@ -234,19 +263,20 @@ class curve():
             if future_term > max(self.terms):
                 continue
 
-            future_idx = self.term.index(future_term) + 1 # Add one because discounts has a None at start
+            future_idx = self.terms.index(future_term) + 1 # Add one because discounts has a None at start
             start_disc = self.discount_factors[start_idx]
             future_disc = self.discount_factors[future_idx]
-            curr_spot = self._individual_forward_rate(future_disc=future_disc,
-                                                      prev_disc=prev_disc,
-                                                      forward_term=forward_term,
-                                                      compound_periods=self.compound_periods,
+            curr_spot = self._individual_horizon_spot(future_disc=future_disc,
+                                                      start_disc=start_disc,
+                                                      term=term,
+                                                      compound_periods=self.compound_periods, 
                                                       order_of_mag=self.order_of_mag)
+
             horizon_term.append(term)
             horizon_spot.append(curr_spot)
 
         # Build horizon spot curve as a series
-        output_curve = pd.Series(self.horizon_spot, index=self.horizon_term)
+        output_curve = pd.Series(horizon_spot, index=horizon_term)
 
         return output_curve
 
@@ -256,8 +286,8 @@ class curve():
         """
 
         # Check that discount factors have been calculated; error if not
-        if self.discount_factors == 'EMPTY':
-            raise TypeError('Internal discount_factors is default string EMPTY; '
+        if self.discount_factors.empty:
+            raise TypeError('Internal discount_factors is empty; '
                             'cannot calculate a horizon grid without first '
                             'adding discount factors using add_discount_factors')
 
@@ -266,11 +296,11 @@ class curve():
             max_term = max(self.terms)
 
         # Build Grid
-        horizon_grid_dict = {}
+        # horizon_grid_dict = {}
         temp_df = pd.Dataframe()
         for term in self.terms:
 
-            if t > max_term:
+            if term > max_term:
                 continue
 
             self.horizon_grid[term] = self.calc_forward_rates(forward_term=term,
