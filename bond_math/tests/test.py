@@ -20,14 +20,18 @@ calc_H6 = test_curve.calc_horizon_curve(horizon_month=6)
 df = pd.DataFrame([exp_H6,calc_H6])
 df = df.T
 df.columns=['exp','calc']
+df.head()
 
 # Calc Forward Rates
+df2 = pd.DataFrame()
 for term in exp_fwd.columns:
     if term == 'Horizon':
         continue
 
+    df2[f'exp_{term}'] = exp_fwd[term]
     calc_fwd = test_curve.calc_forward_rates(forward_term=float(term),
                                              numb_of_horizons=24)
-    
-    df2 = pd.DataFrame([exp_fwd[term],calc_fwd])
-    df2 = df2.T
+
+    df2[f'calc_{term}'] = calc_fwd
+
+df2.head()
