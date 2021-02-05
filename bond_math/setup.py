@@ -4,7 +4,7 @@ with open("README.txt", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="curve", # Replace with your own username
+    name="bond_math", # Replace with your own username
     version="0.0.1",
     author="Larry Yarnelle",
     author_email="larry.c.yarnelle@gmail.com",

@@ -2,7 +2,7 @@
 Functional Test for curve class
 """
 
-from curve import curve
+import bond_math as bmath
 import pandas as pd
 
 # Get expectations
@@ -13,8 +13,8 @@ exp_H6 = pd.Series(exp_curve_H6['spot'].tolist(),
 exp_fwd= pd.read_csv('test_fwd_exp.csv')
 
 # Calc Horizon Spot
-test_curve = curve(term_vector=in_curve['term'].tolist(),
-                   spot_vector=in_curve['spot'].tolist())
+test_curve = bmath.curve(term_vector=in_curve['term'].tolist(),
+                         spot_vector=in_curve['spot'].tolist())
 test_curve.add_discount_factors(compound_periods=2)
 calc_H6 = test_curve.calc_horizon_curve(horizon_month=6)
 df = pd.DataFrame([exp_H6,calc_H6])

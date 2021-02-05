@@ -12,16 +12,23 @@ class curve():
                  order_of_mag=100):
         """
         The init for the curve class. Can be instantiated with a spot curve
-        dictonary, pandas Series, or as rate and term vectors
+        dictonary, pandas Series, or as rate and term vectors. Once created,
+        the curve object will hold the given curve and facilitate the
+        calculation of forward rate paths and/or future spot curves.
 
-        :param spot_dict:
-        :type spot_dict:
-        :param term_vector:
-        :type term_vector:
-        :param spot_vector:
-        :type spot_vector:
-        :param spot_series:
-        :type spot_series:
+        :param spot_dict: A spot curve given in the form of a dictonary, where
+        the each term is a key, and the corresponding rate is the value
+        :type spot_dict: dict
+        :param term_vector: The terms from a spot curve as a list (must be
+        paired with a spot_vector)
+        :type term_vector: list
+        :param spot_vector: The spot rates from a spot curve as a list (must be
+        paired with a term_vector)
+        :type spot_vector: list
+        :param spot_series: A spot curve given in the form of a pandas series,
+        where the index is the term, and the spot rates are the members of the
+        series
+        :type spot_series: pd.Series
         :param order_of_mag: The divisor needed to convert the given rates into
         a decimal (where 1% = 0.01). If the rates are given in percentages
         (where 1% = 1), then the order of magnitude needs to be 100
@@ -60,6 +67,16 @@ class curve():
     def _frange(self, start, stop, step):
         """
         Create a range with float values and float step size
+
+        :param start: The first value of the desired range
+        :type start: float
+        :param stop: The stoping point for the range, not included in the
+        resulting list
+        :type stop: float
+        :param step: The desired step between items in the resulting range
+        :type step: float
+
+        :returns: A list created from the desired range
         """
 
         # Handle basis points (hundredths of a percent)
@@ -123,11 +140,11 @@ class curve():
 
         return (order_of_mag*compound_periods)*((future_disc/start_disc)**(1/(compound_periods*(-forward_term/12)))-1)
 
-        
+
     def  _individual_horizon_spot(self, future_disc, start_disc, term,
                                   compound_periods, order_of_mag):
         """
-        Calculate an individual implied horizon spot rate using two discount 
+        Calculate an individual implied horizon spot rate using two discount
         factors; this method assumes that all terms are in months
 
         :param future_disc:
@@ -147,16 +164,35 @@ class curve():
         """
         # Example Calc
         # 200*((start_disc/future_disc)**(1/(2*(term/12)))-1)
-        
+
         return (order_of_mag*compound_periods)*((start_disc/future_disc)**(1/(compound_periods*(term/12)))-1)
 
 
     def fill_curve(self, spot_min_term=None, spot_min_val=None,
                    spot_max_term=None, spot_max_val=None):
         """
-        Expand a given spot curve to include individual maturities
+        Expands a given spot curve to include individual maturities; also
+        allows for the curve to be expanded to longer or shorter maturities
+        than were included in the original spot curve.
 
-        Uses linear interpolation
+        Note:
+            This method uses ses linear interpolation, and is not a suitable
+            substitute for a proper model.
+
+        :param spot_min_term: The min desired term of the expanded spot curve;
+        if not lower than the min term of the original spot curve, the term will
+        be inserted inside the curve
+        :type spot_min_term: int or float
+        :param spot_min_val: The spot rate at the expanded min term
+        :type spot_min_val: int or float
+        :param spot_max_term: The max desired term of the expanded spot curve;
+        if not bigger than the max term of the original spot curve, the term will
+        be inserted inside the curve
+        :type spot_max_term: int or float
+        :param spot_max_val: The spot rate at the expanded max term
+        :type spot_max_val: int or float
+
+        :returns: None
         """
 
         # Save original spot curve
@@ -175,7 +211,7 @@ class curve():
         # Expand Spot Series
         if spot_min_term < min(self.spot_series.index):
             self.spot_series.at[spot_min_term] = spot_min_val
-        if spot_max_term < max(self.spot_series.index):
+        if spot_max_term > max(self.spot_series.index):
             self.spot_series.at[spot_max_term] = spot_max_val
         self.spot_series = self.spot_series.reindex(self._frange(spot_min_term, spot_max_term+1, 1)).interpolate(method='index')
 
@@ -232,7 +268,7 @@ class curve():
                 curr_forward = self._individual_forward_rate(future_disc=future_disc,
                                                              start_disc=start_disc,
                                                              forward_term=forward_term,
-                                                             compound_periods=self.compound_periods, 
+                                                             compound_periods=self.compound_periods,
                                                              order_of_mag=self.order_of_mag)
 
             # Add forward to output
@@ -269,7 +305,7 @@ class curve():
             curr_spot = self._individual_horizon_spot(future_disc=future_disc,
                                                       start_disc=start_disc,
                                                       term=term,
-                                                      compound_periods=self.compound_periods, 
+                                                      compound_periods=self.compound_periods,
                                                       order_of_mag=self.order_of_mag)
 
             horizon_term.append(term)
