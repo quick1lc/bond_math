@@ -1,4 +1,3 @@
-# TODO: code comments
 # TODO: add ability to get horizon_grid_dict
 
 import numpy as np
@@ -120,11 +119,16 @@ class curve():
         Calculate an individual implied forward rate using two discount factors;
         this method assumes that all terms are in months
 
-        :param future_disc:
+        :param future_disc: The discount factor for the future horizon; should
+        be discount factor for the spot term at the desired horizon + the
+        desired forward term. If you are trying to the 6 month forward in month
+        4, then the future_disc would be the spot discount factor from term 10
         :type future_disc: float
-        :param start_disc:
+        :param start_disc: The discount factor for the base horizon; when the
+        spot curve has been expanded, the start_disc should be the discount factor
+        of the spot term that is equal to the desired horizon
         :type start_disc: float
-        :param forward_term:
+        :param forward_term: The term of the desired forward rate
         :type forward_term: float
         :param compound_periods: The number of compounding periods per year
         :type compound_periods: int or float
@@ -147,11 +151,17 @@ class curve():
         Calculate an individual implied horizon spot rate using two discount
         factors; this method assumes that all terms are in months
 
-        :param future_disc:
+        :param future_disc: The discount factor for the future horizon; should
+        be discount factor for the spot term at the desired horizon + the
+        desired spot term. If you are trying to get the 2 month spot rate in
+        horizon 6, then the future_disc would be the spot discount factor from
+        term 8
         :type future_disc: float
-        :param start_disc:
+        :param start_disc: The spot discount rate from the desired horizon; If
+        you are trying to build the spot curve in horizon 6, then the start_disc
+        would be the the spot discount factor from term 6
         :type start_disc: float
-        :param term:
+        :param term: The spot term being requested
         :type term: float
         :param compound_periods: The number of compounding periods per year
         :type compound_periods: int or float
@@ -176,7 +186,7 @@ class curve():
         than were included in the original spot curve.
 
         Note:
-            This method uses ses linear interpolation, and is not a suitable
+            This method uses linear interpolation, and is not a suitable
             substitute for a proper model.
 
         :param spot_min_term: The min desired term of the expanded spot curve;
@@ -222,14 +232,18 @@ class curve():
 
     def add_discount_factors(self, compound_periods=1):
         """
-        Add discount factors to the curve object
+        Add discount factors to the curve object (adds the new series to the
+        object as self.discount_factors; nothing is returned)
 
         This is a seperate method (not immediatly called by the init) because
         the class includes a simple method for filling the curve if only specific
         spots are given at instantiation. As such, the use must actively add
         the discount factors after they are sure they have a full curve
 
-        Currently assumes semi-annual
+        :param compound_periods: The number of compounding periods per year
+        :type compound_periods: int or float
+
+        :returns: None
         """
 
         # Add discount factors to object
@@ -243,11 +257,19 @@ class curve():
     def calc_forward_rates(self, forward_term, numb_of_horizons):
         """
         Calculate implied forward rates for a given term, given a spot curve
+
+        :param forward_term: The desired forwrad term
+        :type forward_term: int
+        :param numb_of_horizons: The desired length of the forward rate path
+        :type numb_of_horizons: int
+
+        :returns: The forward rate path as a pandas Series where the horizon
+        is the index and the rates are the values
         """
 
         # Check that discount factors have been calculated; error if not
         if self.discount_factors.empty:
-            raise TypeError('Internal discount_factors is empty; '
+            raise TypeError('Internal discount_factors are empty; '
                             'cannot calculate a horizon grid without first '
                             'adding discount factors using add_discount_factors')
 
@@ -279,11 +301,18 @@ class curve():
     def calc_horizon_curve(self, horizon_month):
         """
         Calculate an implied spot curve for a future horizon
+
+        :param horizon_month: The horizon month for which to calculate an
+        implied spot curve
+        :type horizon_month: int
+
+        :returns: A horizon spot curve as a pandas series where the term is the
+        index and the spot rates are the values
         """
 
         # Check that discount factors have been calculated; error if not
         if self.discount_factors.empty:
-            raise TypeError('Internal discount_factors is empty; '
+            raise TypeError('Internal discount_factors are empty; '
                             'cannot calculate a horizon grid without first '
                             'adding discount factors using add_discount_factors')
 
@@ -318,12 +347,20 @@ class curve():
 
     def calc_horizon_grid(self, numb_of_horizons, max_term=None):
         """
-        Calculate a full implied horizon grid
+        Calculate a full implied horizon grid.
+
+        :param numb_of_horizons: The desired length of the forward rate paths
+        :type numb_of_horizons: int
+        :param max_term: The max term to be included in the grid
+        :type max_term: int
+
+        :returns: The horizon grid as a pandas Dataframe. The columns of the
+        grid are the terms and the index is the horizon month
         """
 
         # Check that discount factors have been calculated; error if not
         if self.discount_factors.empty:
-            raise TypeError('Internal discount_factors is empty; '
+            raise TypeError('Internal discount_factors are empty; '
                             'cannot calculate a horizon grid without first '
                             'adding discount factors using add_discount_factors')
 
