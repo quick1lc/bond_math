@@ -4,7 +4,9 @@ import numpy as np
 import pandas as pd
 
 class curve():
-    "Curve Class"
+    """
+    Cruve helps with simple operations to 'roll a spot curve' forward
+    """
 
     def __init__(self, spot_dict={}, term_vector=[],
                  spot_vector=[], spot_series=pd.Series,
@@ -55,6 +57,7 @@ class curve():
                              'a spot series (spot_series), '
                              'or term and spot vectors (term_vector and spot_vector)')
 
+        # Set up other holders
         self.spot_length = len(self.spot_series)
         self.terms = self.input_terms
         self.spots = self.input_spots
