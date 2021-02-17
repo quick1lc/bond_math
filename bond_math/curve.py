@@ -1,7 +1,11 @@
 # TODO: add ability to get horizon_grid_dict
+# TODO: move to decimal
+# TODO: add errors for inputs
 
+from decimal import *
 import numpy as np
 import pandas as pd
+
 
 class curve():
     """
@@ -35,21 +39,21 @@ class curve():
         (where 1% = 1), then the order of magnitude needs to be 100
         :type order_of_mag: int
         """
-
+        print("poodle")
         # Absorb inputs; create or parse spot rate series
         if spot_dict:
-            self.input_terms = [float(str(t)) for t in spot_dict]
-            self.input_spots = [float(str(spot_dict[t])) for t in spot_dict]
+            self.input_terms = [Decimal(str(t)) for t in spot_dict]
+            self.input_spots = [Decimal(str(spot_dict[t])) for t in spot_dict]
             self.spot_series = pd.Series(self.input_spots, index=self.input_terms)
 
         elif term_vector and spot_vector:
-            self.input_terms = [float(t) for t in term_vector]
-            self.input_spots = [float(s) for s in spot_vector]
+            self.input_terms = [Decimal(t) for t in term_vector]
+            self.input_spots = [Decimal(s) for s in spot_vector]
             self.spot_series = pd.Series(self.input_spots, index=self.input_terms)
 
         elif not spot_series.empty:
-            self.input_terms = [float(t) for t in list(spot_series.index)]
-            self.input_spots = [float(s) for s in list(spot_series)]
+            self.input_terms = [Decimal(t) for t in list(spot_series.index)]
+            self.input_spots = [Decimal(s) for s in list(spot_series)]
             self.spot_series = spot_series
 
         else:
@@ -81,8 +85,7 @@ class curve():
         :returns: A list created from the desired range
         """
 
-        # Handle basis points (hundredths of a percent)
-        oom = 10000
+        oom = 1000000
         start = int(start * oom)
         stop = int(stop * oom)
         step = int(step * oom)

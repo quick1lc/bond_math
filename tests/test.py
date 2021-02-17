@@ -35,3 +35,12 @@ for term in exp_fwd.columns:
     df2[f'calc_{term}'] = calc_fwd
 
 df2.head()
+
+# Fill Curve
+term = [1,3,5,7,10]
+spot = [1,2,3,4,5]
+test_curve_2 = bmath.curve(term_vector=term,
+                           spot_vector=spot)
+test_curve_2.spot_series
+test_curve_2.fill_curve()
+test_curve_2.spot_series
