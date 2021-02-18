@@ -1,6 +1,7 @@
 # TODO: add ability to get horizon_grid_dict
 # TODO: move to decimal
 # TODO: add errors for inputs
+# TODO: add explination of use of decimal to doc strings
 
 from decimal import *
 import numpy as np
@@ -39,7 +40,7 @@ class curve():
         (where 1% = 1), then the order of magnitude needs to be 100
         :type order_of_mag: int
         """
-        print("poodle")
+
         # Absorb inputs; create or parse spot rate series
         if spot_dict:
             self.input_terms = [Decimal(str(t)) for t in spot_dict]
@@ -54,7 +55,7 @@ class curve():
         elif not spot_series.empty:
             self.input_terms = [Decimal(t) for t in list(spot_series.index)]
             self.input_spots = [Decimal(s) for s in list(spot_series)]
-            self.spot_series = spot_series
+            self.spot_series = pd.Series(self.input_spots, index=self.input_terms)
 
         else:
             raise ValueError('Please provide a spot dictonary (spot_dict), '
@@ -229,7 +230,14 @@ class curve():
             self.spot_series.at[spot_min_term] = spot_min_val
         if spot_max_term > max(self.spot_series.index):
             self.spot_series.at[spot_max_term] = spot_max_val
-        self.spot_series = self.spot_series.reindex(self._frange(spot_min_term, spot_max_term+1, 1)).interpolate(method='index')
+        self.spot_series = self.spot_series.astype('float')
+        temp_spot_series = self.spot_series.reindex(self._frange(spot_min_term, spot_max_term+1, 1)).interpolate(method='index')
+
+        # Convert back to decimal and replace original curve values
+        temp_terms = [Decimal(t) for t in list(temp_spot_series.index)]
+        temp_spots = [Decimal(s) for s in list(temp_spot_series)]
+        self.spot_series = pd.Series(temp_spots, index=temp_terms)
+        self.spot_series.update(self.orig_spot_series)
 
         # Update Object after Expanding Spot Series
         self.terms = list(self.spot_series.index)
