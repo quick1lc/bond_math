@@ -44,3 +44,5 @@ test_curve_2 = bmath.curve(term_vector=term,
 test_curve_2.spot_series
 test_curve_2.fill_curve()
 test_curve_2.spot_series
+test_out = test_curve_2.spot_series * 2
+test_out.at[3]
