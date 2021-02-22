@@ -233,7 +233,7 @@ class curve():
         self.spot_series = self.spot_series.astype('float')
         temp_spot_series = self.spot_series.reindex(self._frange(spot_min_term, spot_max_term+1, 1)).interpolate(method='index')
 
-        # Convert back to decimal and replace original curve values
+        # Convert back to Decimal and replace original curve values
         temp_terms = [Decimal(t) for t in list(temp_spot_series.index)]
         temp_spots = [Decimal(s) for s in list(temp_spot_series)]
         self.spot_series = pd.Series(temp_spots, index=temp_terms)
