@@ -43,18 +43,18 @@ class curve():
 
         # Absorb inputs; create or parse spot rate series
         if spot_dict:
-            self.input_terms = [Decimal(str(t)) for t in spot_dict]
-            self.input_spots = [Decimal(str(spot_dict[t])) for t in spot_dict]
+            self.input_terms = [float(str(t)) for t in spot_dict]
+            self.input_spots = [float(str(spot_dict[t])) for t in spot_dict]
             self.spot_series = pd.Series(self.input_spots, index=self.input_terms)
 
         elif term_vector and spot_vector:
-            self.input_terms = [Decimal(t) for t in term_vector]
-            self.input_spots = [Decimal(s) for s in spot_vector]
+            self.input_terms = [float(t) for t in term_vector]
+            self.input_spots = [float(s) for s in spot_vector]
             self.spot_series = pd.Series(self.input_spots, index=self.input_terms)
 
         elif not spot_series.empty:
-            self.input_terms = [Decimal(t) for t in list(spot_series.index)]
-            self.input_spots = [Decimal(s) for s in list(spot_series)]
+            self.input_terms = [float(t) for t in list(spot_series.index)]
+            self.input_spots = [float(s) for s in list(spot_series)]
             self.spot_series = pd.Series(self.input_spots, index=self.input_terms)
 
         else:
@@ -117,6 +117,7 @@ class curve():
         discounts = pd.Series()
         discounts = (1+((spot_series/order_of_mag)/compound_periods))**(-compound_periods*(spot_series.index/12))
         discounts.at[0] = np.nan
+        discounts.sort_index(inplace=True)
 
         return discounts
 
@@ -230,14 +231,14 @@ class curve():
             self.spot_series.at[spot_min_term] = spot_min_val
         if spot_max_term > max(self.spot_series.index):
             self.spot_series.at[spot_max_term] = spot_max_val
-        self.spot_series = self.spot_series.astype('float')
-        temp_spot_series = self.spot_series.reindex(self._frange(spot_min_term, spot_max_term+1, 1)).interpolate(method='index')
-
-        # Convert back to Decimal and replace original curve values
-        temp_terms = [Decimal(t) for t in list(temp_spot_series.index)]
-        temp_spots = [Decimal(s) for s in list(temp_spot_series)]
-        self.spot_series = pd.Series(temp_spots, index=temp_terms)
-        self.spot_series.update(self.orig_spot_series)
+        # self.spot_series = self.spot_series.astype('float')
+        self.spot_series = self.spot_series.reindex(self._frange(spot_min_term, spot_max_term+1, 1)).interpolate(method='index')
+        # 
+        # # Convert back to Decimal and replace original curve values
+        # temp_terms = [float(t) for t in list(temp_spot_series.index)]
+        # temp_spots = [Decimal(s) for s in list(temp_spot_series)]
+        # self.spot_series = pd.Series(temp_spots, index=temp_terms)
+        # self.spot_series.update(self.orig_spot_series)
 
         # Update Object after Expanding Spot Series
         self.terms = list(self.spot_series.index)

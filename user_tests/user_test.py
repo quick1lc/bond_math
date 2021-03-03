@@ -16,6 +16,7 @@ exp_fwd= pd.read_csv('test_fwd_exp.csv')
 test_curve = bmath.curve(term_vector=in_curve['term'].tolist(),
                          spot_vector=in_curve['spot'].tolist())
 test_curve.add_discount_factors(compound_periods=2)
+test_curve.spot_series.index
 calc_H6 = test_curve.calc_horizon_curve(horizon_month=6)
 df = pd.DataFrame([exp_H6,calc_H6])
 df = df.T
@@ -42,6 +43,8 @@ spot = [1,2,3,4,5]
 test_curve_2 = bmath.curve(term_vector=term,
                            spot_vector=spot)
 test_curve_2.spot_series
+test_curve_2.add_discount_factors(compound_periods=2)
+test_curve_2.discount_factors
 test_curve_2.fill_curve()
 test_curve_2.spot_series
 test_out = test_curve_2.spot_series * 2
